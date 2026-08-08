@@ -692,7 +692,7 @@ const KEY="chronoDex_v5";
 let dbFromStore=false;
 let DB=load(); applyLucyLeader(DB); applyBasics(DB);
 function __parseCSVsyn(t){var rows=[],row=[],f="",q=false,DQ=34,CM=44,NL=10;t=String(t).replace(/\r/g,"");for(var i=0;i<t.length;i++){var cc=t.charCodeAt(i),c=t[i];if(q){if(cc===DQ){if(t.charCodeAt(i+1)===DQ){f+=String.fromCharCode(34);i++;}else q=false;}else f+=c;}else{if(cc===DQ)q=true;else if(cc===CM){row.push(f);f="";}else if(cc===NL){row.push(f);rows.push(row);row=[];f="";}else f+=c;}}if(f!==""||row.length){row.push(f);rows.push(row);}return rows;}
-(function(){ try{ fetch("시너지.csv?v="+Date.now()).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(txt){
+(function(){ try{ fetch("synergy.csv?v="+Date.now()).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(txt){
   var rows=__parseCSVsyn(txt); if(!rows.length)return; var map={};
   for(var i=1;i<rows.length;i++){var rw=rows[i]; if(rw&&rw[0]) map[rw[0].trim()]=(rw[2]||"");}
   (DB.chars||[]).forEach(function(c){ if(map[c.k]!==undefined){ var blob=map[c.k]; c.synergy = blob? blob.split("|").map(function(e){var p=e.split("=");return {k:(p[0]||"").trim(),w:p.slice(1).join("=").trim()};}).filter(function(x){return x.k;}):[]; } });
@@ -1252,7 +1252,7 @@ function imgOut(v){return !v?"":(String(v).startsWith("data:")?"[임베드]":v);
 function downloadFile(name,text){const blob=new Blob(["﻿"+text],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();}
 
 const CHAR_CSV_H=["키","도감번호","이름","영문명","역할","난이도","해금조건","한줄소개","핵심메커니즘","특징태그","시너지","패시브명","패시브설명","패시브이미지","능력치","이미지"];
-function exportSynergyCSV(){var lines=[["키","이름","시너지"]];(DB.chars||[]).forEach(function(c){lines.push([c.k,c.n||"",(c.synergy||[]).map(function(s){return s.k+"="+(s.w||"");}).join("|")]);});var Q=String.fromCharCode(34);var out=lines.map(function(r){return r.map(function(x){x=String(x==null?"":x);if(/[,\n]/.test(x)||x.indexOf(Q)>=0){x=Q+x.split(Q).join(Q+Q)+Q;}return x;}).join(",");}).join("\n");downloadFile("시너지.csv",out);}
+function exportSynergyCSV(){var lines=[["키","이름","시너지"]];(DB.chars||[]).forEach(function(c){lines.push([c.k,c.n||"",(c.synergy||[]).map(function(s){return s.k+"="+(s.w||"");}).join("|")]);});var Q=String.fromCharCode(34);var out=lines.map(function(r){return r.map(function(x){x=String(x==null?"":x);if(/[,\n]/.test(x)||x.indexOf(Q)>=0){x=Q+x.split(Q).join(Q+Q)+Q;}return x;}).join(",");}).join("\n");downloadFile("synergy.csv",out);}
 function exportCharCSV(){
   const rows=DB.chars.map(c=>{const p=c.passive||{};
     return [c.k,c.no,c.n,c.en,c.role,c.diff||"",c.unlock||"",c.intro||"",c.mech||"",
