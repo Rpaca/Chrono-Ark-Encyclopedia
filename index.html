@@ -349,6 +349,7 @@
   .synmatrix td.nocell{background:transparent}
   .synmatrix td.selfcell{background:var(--panel3);color:var(--gem);text-align:center;font-size:14px}
 .ppick{cursor:pointer;transition:.12s}.ppick:hover{filter:brightness(1.13);outline:2px solid #79c0ff;outline-offset:-2px}.pname{cursor:pointer;color:#cfe3ff!important}.pname:hover{color:#79c0ff!important;text-decoration:underline}
+.kw{border-bottom:1px dotted #8ab4ff;cursor:help}#kwTip{position:fixed;z-index:100000;max-width:230px;background:#0d1117;border:1px solid #79c0ff;border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.5;color:#e6edf3;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.5)}#kwTip.hide{display:none}
 </style>
 </head>
 <body>
@@ -1300,7 +1301,49 @@ function buildCardNameIndex(){
   const escd=names.map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
   CARDNAME_RE=escd.length?new RegExp("("+escd.join("|")+")(?!["+SUFFIX_BLOCK+"])","g"):null;
 }
-function annotateRefs(text){ const e=esc(text); if(!CARDNAME_RE)return e; return e.replace(CARDNAME_RE,'<span class="cref" data-cref="$1">$1</span>'); }
+var KEYWORD_DEFS={
+"신속":"사용해도 이번 턴이 끝나지 않아 이어서 다른 스킬을 낼 수 있습니다.",
+"과부하":"신속 스킬을 연달아 쓸수록 쌓이며, 일정 이상이면 다음 행동에 불이익을 받습니다.",
+"고통":"매 턴 지속 피해를 주는 디버프(도트 피해). 회복 게이지를 깎습니다.",
+"기절":"다음 행동이 불가능해지는 방해 디버프.",
+"약화":"공격력·방어력 등 능력치를 낮추는 디버프 계열.",
+"방해":"적의 행동 순서를 늦추거나 기절시키는 디버프 계열.",
+"도발":"이 상태의 아군을 적이 우선 공격하도록 강제합니다(어그로).",
+"보호막":"피해를 흡수하는 임시 방어막. 체력 대신 소모됩니다.",
+"방벽":"피해를 막아주는 보호 효과(보호막과 유사).",
+"관통":"대상의 방어력을 무시하고 피해를 입힙니다.",
+"반격":"공격받을 때 되받아 피해를 줍니다.",
+"회피":"공격을 빗나가게 할 확률.",
+"치명타":"일정 확률로 추가 피해를 입힙니다.",
+"명중":"공격이 빗나가지 않을 확률.",
+"필중":"반드시 명중하는 공격.",
+"예견":"미리 지정한 스킬을 강화하는 프레셀 계열 효과.",
+"부동":"교환·버리기가 불가능한 스킬 속성.",
+"제외":"사용 후 이번 전투에서 덱으로 돌아가지 않고 제거됩니다.",
+"일회성":"이번 전투에서 한 번만 사용할 수 있습니다.",
+"회복 게이지":"초록 게이지. 있으면 회복 효율이 온전하고, 없으면 절반이 됩니다.",
+"회복게이지":"초록 게이지. 있으면 회복 효율이 온전하고, 없으면 절반이 됩니다.",
+"화르륵":"미스 체인 관련 버프로, 다음 화염 스킬을 강화합니다.",
+"기본기":"기본 카드가 가지는 속성.",
+"보호":"피해로부터 아군을 지키는 방어 계열 효과.",
+"회복":"체력을 되돌리는 치유 효과."
+};
+var KEYWORD_RE=new RegExp('('+Object.keys(KEYWORD_DEFS).sort(function(a,b){return b.length-a.length;}).map(function(k){return k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}).join('|')+')','g');
+function annotateKeywords(html){ if(!KEYWORD_RE)return html; var parts=html.split(/(<[^>]+>)/); var inCref=0,out='';
+  for(var i=0;i<parts.length;i++){ var seg=parts[i];
+    if(seg.charAt(0)==='<'){ if(/^<span[^>]*class="cref"/.test(seg))inCref++; else if(/^<\/span>/.test(seg)&&inCref>0)inCref--; out+=seg; }
+    else { out+= inCref? seg : seg.replace(KEYWORD_RE, function(m){ return '<span class="kw" data-k="'+m+'">'+m+'</span>'; }); }
+  }
+  return out;
+}
+(function(){ var vis=false;
+  function tip(){ var t=document.getElementById("kwTip"); if(!t){ t=document.createElement("div"); t.id="kwTip"; t.className="hide"; if(document.body)document.body.appendChild(t); } return t; }
+  function move(e){ var t=tip(); var w=t.offsetWidth||210,h=t.offsetHeight||60,x=e.clientX+14,y=e.clientY+14; if(x+w>window.innerWidth)x=e.clientX-w-14; if(y+h>window.innerHeight)y=e.clientY-h-14; t.style.left=x+"px"; t.style.top=y+"px"; }
+  document.addEventListener("mouseover",function(e){ var el=e.target&&e.target.closest?e.target.closest(".kw"):null; if(!el)return; var k=el.getAttribute("data-k"); var d=KEYWORD_DEFS[k]; if(!d)return; var t=tip(); t.innerHTML="<b>"+k+"</b><br>"+d; t.classList.remove("hide"); vis=true; move(e); });
+  document.addEventListener("mouseout",function(e){ var el=e.target&&e.target.closest?e.target.closest(".kw"):null; if(el){ tip().classList.add("hide"); vis=false; } });
+  document.addEventListener("mousemove",function(e){ if(vis)move(e); });
+})();
+function annotateRefs(text){ const e=esc(text); var h=(!CARDNAME_RE)?e:e.replace(CARDNAME_RE,'<span class="cref" data-cref="$1">$1</span>'); return annotateKeywords(h); }
 let crefCur=null;
 function crefTipShow(name,owner,x,y){
   const t=document.getElementById("crefTip"); if(!t)return;
