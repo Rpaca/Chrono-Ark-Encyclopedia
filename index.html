@@ -481,7 +481,7 @@
       <label class="btn sm" style="cursor:pointer">CSV↑ 카드표<input type="file" id="impCardCSV" accept=".csv" class="hide"></label>
       <button class="btn sm" onclick="exportJSON()">JSON↓</button>
       <label class="btn sm" style="cursor:pointer">JSON↑<input type="file" id="importFile" accept=".json" class="hide"></label>
-      <button class="btn sm danger" onclick="resetData()">기본값 복원</button>
+      <button class="btn sm danger" onclick="resetData()">기본값 복원</button><button class="btn sm" onclick="showVisitLog()">📊 방문 기록</button>
       <span class="cnt" id="saveState" style="align-self:center"></span>
     </div>
     <div class="tbl-wrap"><table id="dataTable"></table></div>
@@ -1621,6 +1621,29 @@ var FIREBASE_CONFIG={apiKey:"AIzaSyCUyehTkADDetADLnWAlcdqKfrpgOXS9Eg",authDomain
   try{firebase.initializeApp(FIREBASE_CONFIG);}catch(e){console.warn("firebase init",e);return;}
   var fdb=firebase.firestore(); window.__fdb=fdb;
   var imgCol=fdb.collection("images");
+  try{ if(!sessionStorage.getItem("__vlog")){ sessionStorage.setItem("__vlog","1");
+    fetch("https://api.ipify.org?format=json").then(function(r){return r.json();}).then(function(d){
+      var n=new Date(); var day=n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0");
+      fdb.collection("visits").add({ip:(d&&d.ip)||"?",day:day,ts:Date.now(),ua:(navigator.userAgent||"").slice(0,140),pw:"960612"}).catch(function(){});
+    }).catch(function(){});
+  } }catch(e){}
+  window.showVisitLog=function(){
+    if(!window.__fdb){alert("Firebase 연결이 없습니다.");return;}
+    window.__fdb.collection("visits").orderBy("ts","desc").limit(3000).get().then(function(snap){
+      var rows=[]; snap.forEach(function(d){rows.push(d.data());});
+      var uniq={},byDay={};
+      rows.forEach(function(r){uniq[r.ip]=(uniq[r.ip]||0)+1; byDay[r.day]=(byDay[r.day]||0)+1;});
+      var days=Object.keys(byDay).sort().reverse();
+      var ov=document.getElementById("visitLog"); if(ov)ov.remove();
+      ov=document.createElement("div"); ov.id="visitLog";
+      ov.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center";
+      var dayRows=days.map(function(d){return "<tr><td style=\"padding:2px 8px\">"+d+"</td><td style=\"padding:2px 8px;text-align:right\">"+byDay[d]+"</td></tr>";}).join("");
+      var recent=rows.slice(0,300).map(function(r){return "<tr><td style=\"padding:2px 8px\">"+(r.day||"")+"</td><td style=\"padding:2px 8px\">"+esc(r.ip||"")+"</td></tr>";}).join("");
+      ov.innerHTML="<div style=\"background:#151a24;border:1px solid var(--line);border-radius:12px;padding:14px;width:min(94vw,540px);max-height:84vh;overflow:auto\"><div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:8px\"><b>📊 방문 기록</b><span style=\"cursor:pointer;font-weight:800;font-size:16px\" onclick=\"document.getElementById(&#39;visitLog&#39;).remove()\">✕</span></div><div style=\"margin-bottom:10px\">총 방문 <b>"+rows.length+"</b>회 · 고유 IP <b>"+Object.keys(uniq).length+"</b></div><div style=\"display:flex;gap:16px;flex-wrap:wrap\"><div style=\"flex:1;min-width:200px\"><b class=\"cnt\">일자별 횟수</b><table style=\"width:100%;font-size:12px;border-collapse:collapse\"><tr><th style=\"text-align:left;padding:2px 8px\">일자</th><th style=\"text-align:right;padding:2px 8px\">횟수</th></tr>"+dayRows+"</table></div><div style=\"flex:1;min-width:200px\"><b class=\"cnt\">최근 방문(최대 300)</b><table style=\"width:100%;font-size:12px;border-collapse:collapse\"><tr><th style=\"text-align:left;padding:2px 8px\">일자</th><th style=\"text-align:left;padding:2px 8px\">IP</th></tr>"+recent+"</table></div></div></div>";
+      ov.onclick=function(ev){if(ev.target===ov)ov.remove();};
+      document.body.appendChild(ov);
+    }).catch(function(e){alert("불러오기 실패: "+e);});
+  };
   function docId(kind,key){ return (kind+":"+key).replace(/\//g,"_"); }
   function fbApply(id,d){
     var img=(d&&d.img)||"";
