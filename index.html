@@ -457,13 +457,13 @@
       <div class="simdeckgrid" id="simDeckGrid"></div>
     </div>
     <div class="box">
-      <div class="ct"><span>🎴 드로우 시뮬</span><span class="cnt" id="drawinfo"></span></div>
+      <div class="ct"><span>🔀 드로우 시뮬</span><span class="cnt" id="drawinfo"></span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
         <label>시작 마나</label><input type="number" id="mana" value="3" min="0" max="20" style="width:70px">
         <button class="btn p" onclick="startDraw()">첫 손패 뽑기</button>
         <button class="btn" id="redrawBtn" onclick="redraw()" disabled>멀리건</button>
         <button class="btn" id="drawOneBtn" onclick="drawOne()" disabled>+2 드로우</button>
-        <button class="btn" onclick="suggestParty()">🎲 랜덤 2캐릭터</button>
+        <button class="btn" onclick="suggestParty()">🔀 랜덤 2캐릭터</button>
         <span class="cnt" id="drawstat" style="align-self:center"></span>
       </div>
       <div class="hand" id="hand"><div class="empty">덱을 담고 첫 손패를 뽑아보세요.</div></div>
@@ -1349,7 +1349,7 @@ function clearBasics(){ for(var i=myDeck.length-1;i>=0;i--){ if(myDeck[i].owner=
 function basicTotal(nm){ return myDeck.filter(function(e){return e.owner==="공용"&&e.name===nm;}).length; }
 function basicPanelHTML(){
   var owners=partyChars();
-  var head='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><b>파티 구성('+owners.length+'/4)</b><button class="btn sm" onclick="suggestParty()">🎲 랜덤 추천</button></div>';
+  var head='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><b>파티 구성('+owners.length+'/4)</b><button class="btn sm" onclick="suggestParty()">🔀 랜덤 추천</button></div>';
   var slots=[];
   owners.forEach(function(k){ var ch=charByK(k); var role=ch&&ch.role; var im=charImg(ch);
     var steps=jobBasics(role).map(function(nm){ var n=basicCountFor(k,nm); var sh=nm.replace("기본 ","").charAt(0);
@@ -1396,7 +1396,7 @@ function renderDeckPanel(){ const p=document.getElementById("deckPanel"); if(!p)
    <div class="dp-head"><b>내 덱 <span class="cnt">${deckCount()}장 · ${g.length}종</span></b><div style="cursor:pointer;font-weight:800;font-size:16px" onclick="closeDeckPanel()">✕</div></div>
    <div class="dp-tools">
      <input id="dpSaveName" placeholder="덱 이름 입력 후 저장" style="flex:1">
-     <button class="btn sm" onclick="deckSaveNamed()">💾 저장</button><button class="btn sm" onclick="suggestParty()">🎲 랜덤 2캐릭터</button>
+     <button class="btn sm" onclick="deckSaveNamed()">💾 저장</button><button class="btn sm" onclick="suggestParty()">🔀 랜덤 2캐릭터</button>
      <select id="dpLoadSel" onchange="deckLoadNamed(this.value);this.value=''"><option value="">📂 불러오기…</option>${names.map(n=>`<option>${esc(n)}</option>`).join("")}</select>
    </div>
    <div class="dp-basics">${basicPanelHTML()}</div>
@@ -1474,13 +1474,31 @@ function startDraw(){const deck=totalDeck();if(!deck.length){alert("덱에 담�
 function redraw(){if(!sim.hand.length)return;sim.pile=shuffle(sim.pile.concat(sim.hand));const need=drawCount();sim.hand=sim.pile.splice(0,Math.min(need,sim.pile.length));renderHand();}
 function drawOne(){if(!sim.pile.length){alert("덱이 비었습니다.");return;}sim.hand.push(sim.pile.shift());if(sim.pile.length)sim.hand.push(sim.pile.shift());renderHand();}
 function swapCard(i){if(!sim.pile.length){alert("덱이 비어 교환 불가");return;}sim.pile.push(sim.hand[i]);shuffle(sim.pile);sim.hand[i]=sim.pile.shift();renderHand();}
+function swapCardPick(i){ if(!sim.hand||!sim.hand[i])return; if(!sim.pile||!sim.pile.length){alert("덱이 비어 교체 불가");return;} openSwapPicker(i); }
+function openSwapPicker(i){ var ex=document.getElementById("swapPicker"); if(ex)ex.remove();
+  var ov=document.createElement("div"); ov.id="swapPicker"; ov.dataset.i=i;
+  ov.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center";
+  ov.innerHTML='<div style="background:#151a24;border:1px solid var(--line);border-radius:12px;padding:12px;width:min(92vw,380px);max-height:80vh;display:flex;flex-direction:column"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>카드 교체</b><span style="cursor:pointer;font-weight:800;font-size:16px" onclick="document.getElementById(\'swapPicker\').remove()">✕</span></div><div class="cnt" style="margin-bottom:6px">버릴 카드: <b>'+esc(sim.hand[i].name)+'</b> → 덱에서 가져올 카드 선택</div><input id="spSearch" placeholder="카드 검색" style="width:100%;margin-bottom:8px;box-sizing:border-box" oninput="renderSwapPicker()"><div id="spList" style="overflow:auto"></div></div>';
+  ov.onclick=function(ev){ if(ev.target===ov)ov.remove(); };
+  document.body.appendChild(ov); renderSwapPicker(); var si=document.getElementById("spSearch"); if(si)si.focus();
+}
+function renderSwapPicker(){ var box=document.getElementById("spList"); if(!box)return;
+  var q=((document.getElementById("spSearch")||{}).value||"").toLowerCase();
+  var g={}; sim.pile.forEach(function(c){ var key=c.owner+"|"+c.name; if(!g[key])g[key]={c:c,n:0}; g[key].n++; });
+  var arr=Object.keys(g).map(function(k){return g[k];});
+  if(q)arr=arr.filter(function(x){return (x.c.name||"").toLowerCase().indexOf(q)>=0;});
+  arr.sort(function(a,b){return ((+a.c.cost||0)-(+b.c.cost||0))||String(a.c.name).localeCompare(b.c.name,"ko");});
+  box.innerHTML=arr.map(function(x){ var c=x.c; var ow=charByK(c.owner)?esc(charByK(c.owner).n):esc(c.owner);
+    return '<div onclick="doSwapPick(\''+jsq(c.owner)+'\',\''+jsq(c.name)+'\')" style="display:flex;align-items:center;gap:8px;padding:5px;cursor:pointer;border-radius:6px" onmouseover="this.style.background=\'rgba(255,255,255,.07)\'" onmouseout="this.style.background=\'\'"><span style="background:'+typeVar(c.type)+';color:#fff;border-radius:5px;padding:0 6px;font-weight:800;font-size:12px">'+esc(String(c.cost))+'</span><span>'+esc(c.name)+' <span class="cnt">'+ow+' · ×'+x.n+'</span></span></div>'; }).join("")||'<div class="cnt" style="padding:6px">덱에 카드가 없습니다.</div>';
+}
+function doSwapPick(owner,name){ var ov=document.getElementById("swapPicker"); if(!ov)return; var i=+ov.dataset.i; var pi=sim.pile.findIndex(function(c){return c.owner===owner&&c.name===name;}); if(pi<0){ov.remove();return;} var inc=sim.pile.splice(pi,1)[0]; var out=sim.hand[i]; sim.hand[i]=inc; sim.pile.push(out); shuffle(sim.pile); ov.remove(); renderHand(); }
 function renderHand(){const box=document.getElementById("hand");if(!box)return;box.innerHTML="";const rb=document.getElementById("redrawBtn"),db=document.getElementById("drawOneBtn");if(rb)rb.disabled=!sim.hand.length;if(db)db.disabled=!sim.pile.length;
   document.getElementById("drawinfo").textContent=`드로우 ${drawCount()}장 (캐릭터 ${deckOwners().length} + 1)`;
   document.getElementById("drawstat").innerHTML=`시작마나 <b style="color:var(--lucy)">${sim.mana}</b> · 손패 <b>${sim.hand.length}</b> · 남은덱 <b>${sim.pile.length}</b> · 총코스트 <b>${sim.hand.reduce((s,c)=>s+(+c.cost||0),0)}</b>`;
   if(!sim.hand.length){box.innerHTML='<div class="empty">덱을 담고 첫 손패를 뽑아보세요.</div>';return;}
-  sim.hand.forEach((c,i)=>{const el=document.createElement("div");el.className="pcard";el.onclick=()=>swapCard(i);el.title="클릭: 1장 교환";
+  sim.hand.forEach((c,i)=>{const el=document.createElement("div");el.className="pcard";el.onclick=()=>swapCardPick(i);el.title="클릭: 카드 교체(선택)";
     el.innerHTML=`<div class="kbar" style="background:${typeVar(c.type)}"></div><div class="ktop"><div class="gem"><span>${c.cost}</span></div><div class="kname">${esc(c.name)}</div></div>
-      <div class="kbody" style="flex:1">${esc(c.eff)}</div><div class="owner" style="color:${roleVar(charByK(c.owner)?.role)}">${esc(charByK(c.owner)?.n||c.owner)} · ${c.type}</div><button class="btn sm" style="margin-top:4px;width:100%" onclick="event.stopPropagation();swapCard(${i})">🔄 교체</button>`;box.appendChild(el);});}
+      <div class="kbody" style="flex:1">${esc(c.eff)}</div><div class="owner" style="color:${roleVar(charByK(c.owner)?.role)}">${esc(charByK(c.owner)?.n||c.owner)} · ${c.type}</div><button class="btn sm" style="margin-top:4px;width:100%" onclick="event.stopPropagation();swapCardPick(${i})">🔄 교체</button>`;box.appendChild(el);});}
 
 function normalizeBuffs(){ (DB.cards||[]).forEach(c=>{ if(c.buffs===undefined){ const p=splitEff(c.eff||""); c.buffs=p.buffs.map(b=>{const dd=splitDur(b.d),ss=splitStack(dd.eff);return {n:b.n,dur:dd.dur,stack:ss.stack,d:ss.eff?ss.eff.split(/,\s*/).map(x=>x.trim()).filter(Boolean):[]};}); c.eff=p.main; } }); }
 normalizeBuffs();
