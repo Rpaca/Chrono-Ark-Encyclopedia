@@ -348,6 +348,7 @@
   .synmatrix td.syncell:hover{background:rgba(74,134,232,.16);color:var(--tx)}
   .synmatrix td.nocell{background:transparent}
   .synmatrix td.selfcell{background:var(--panel3);color:var(--gem);text-align:center;font-size:14px}
+.ppick{cursor:pointer;transition:.12s}.ppick:hover{filter:brightness(1.13);outline:2px solid #79c0ff;outline-offset:-2px}.pname{cursor:pointer;color:#cfe3ff!important}.pname:hover{color:#79c0ff!important;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -1337,25 +1338,46 @@ function basicSetFor(role){ return role==="방어"?{"기본 공격":2,"기본 �
 var BASIC_NAMES=["기본 공격","기본 치유","기본 보호"];
 function partyChars(){ var out=[],seen={}; myDeck.forEach(function(e){ var k=(e.owner==="공용")?e.forChar:e.owner; if(k&&k!=="공용"&&!seen[k]){seen[k]=1;out.push(k);} }); return out; }
 function basicCountFor(k,nm){ return myDeck.filter(function(e){return e.owner==="공용"&&e.name===nm&&e.forChar===k;}).length; }
+function charDeckCount(k){ return myDeck.filter(function(e){return e.owner===k||e.forChar===k;}).length; }
 function jobBasics(role){ var set=basicSetFor(role); return BASIC_NAMES.filter(function(nm){return (set[nm]||0)>0;}); }
 function adjustBasic(k,nm,delta){ if(delta>0){ myDeck.push({owner:"공용",name:nm,basic:true,forChar:k}); } else { for(var i=myDeck.length-1;i>=0;i--){ if(myDeck[i].owner==="공용"&&myDeck[i].name===nm&&myDeck[i].forChar===k){ myDeck.splice(i,1); break; } } } persistDeck(); refreshDeckUI(); }
 function addBasicsFor(k){ var ch=charByK(k); var set=basicSetFor(ch&&ch.role); BASIC_NAMES.forEach(function(nm){ var want=set[nm]||0; for(var i=0;i<want;i++) myDeck.push({owner:"공용",name:nm,basic:true,forChar:k}); }); persistDeck(); refreshDeckUI(); }
 function removeCharAll(k){ for(var i=myDeck.length-1;i>=0;i--){ if(myDeck[i].owner===k||myDeck[i].forChar===k) myDeck.splice(i,1); } persistDeck(); refreshDeckUI(); }
+function resetBasics(k){ for(var i=myDeck.length-1;i>=0;i--){ if(myDeck[i].owner==="공용"&&myDeck[i].forChar===k&&BASIC_NAMES.indexOf(myDeck[i].name)>=0) myDeck.splice(i,1); } addBasicsFor(k); }
 function addAllBasics(){ var o=partyChars(); if(!o.length){alert("먼저 캐릭터 카드를 덱에 담으세요.");return;} o.forEach(addBasicsFor); }
 function clearBasics(){ for(var i=myDeck.length-1;i>=0;i--){ if(myDeck[i].owner==="공용"&&BASIC_NAMES.indexOf(myDeck[i].name)>=0) myDeck.splice(i,1); } persistDeck(); refreshDeckUI(); }
 function basicTotal(nm){ return myDeck.filter(function(e){return e.owner==="공용"&&e.name===nm;}).length; }
 function basicPanelHTML(){
   var owners=partyChars();
-  var tot='<span class="cnt">공격 '+basicTotal("기본 공격")+' · 치유 '+basicTotal("기본 치유")+' · 보호 '+basicTotal("기본 보호")+'</span>';
-  var head='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px"><b>🃏 기본 카드</b> '+tot+'<button class="btn sm" onclick="addAllBasics()">파티 전체 추가</button><button class="btn sm danger" onclick="clearBasics()">비우기</button></div>';
-  var body;
-  if(!owners.length){ body='<div class="cnt" style="padding:4px 2px">덱에 캐릭터 카드를 담거나 🎲 랜덤 2캐릭터를 누르면 파티별 기본 카드를 조정할 수 있어요.</div>'; }
-  else { body=owners.map(function(k){ var ch=charByK(k); var role=ch&&ch.role;
-    var steps=jobBasics(role).map(function(nm){ var n=basicCountFor(k,nm); var short=nm.replace("기본 ","");
-      return '<span style="display:inline-flex;align-items:center;gap:3px;margin:2px 10px 2px 0"><span class="cnt" style="min-width:26px">'+short+'</span><button class="btn sm" onclick="adjustBasic(\''+jsq(k)+'\',\''+jsq(nm)+'\',-1)">−</button><b style="min-width:16px;text-align:center;display:inline-block">'+n+'</b><button class="btn sm" onclick="adjustBasic(\''+jsq(k)+'\',\''+jsq(nm)+'\',1)">+</button></span>'; }).join("");
-    return '<div style="padding:5px 2px;border-top:1px solid var(--line)"><div style="margin-bottom:3px"><b>'+esc(ch&&ch.n||k)+'</b> <span class="cnt">('+esc(role||"")+')</span> <button class="btn sm" onclick="addBasicsFor(\''+jsq(k)+'\')" title="추천 세트 추가">추천세트</button> <button class="btn sm danger" onclick="removeCharAll(\''+jsq(k)+'\')">전부 비우기</button></div><div style="display:flex;flex-wrap:wrap;align-items:center">'+steps+'</div></div>'; }).join(""); }
-  return '<div style="margin:6px 0;padding:6px;border:1px solid var(--line);border-radius:8px">'+head+body+'</div>';
+  var head='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><b>파티 구성('+owners.length+'/4)</b><button class="btn sm" onclick="suggestParty()">🎲 랜덤 추천</button></div>';
+  var slots=[];
+  owners.forEach(function(k){ var ch=charByK(k); var role=ch&&ch.role; var im=charImg(ch);
+    var steps=jobBasics(role).map(function(nm){ var n=basicCountFor(k,nm); var sh=nm.replace("기본 ","").charAt(0);
+      return '<div style="display:flex;align-items:center;justify-content:center;gap:1px;margin:1px 0"><span style="font-size:10px;color:var(--tx3);width:12px">'+sh+'</span><button class="btn" style="padding:0 4px;font-size:12px;min-width:0" onclick="adjustBasic(\''+jsq(k)+'\',\''+jsq(nm)+'\',-1)">−</button><b style="font-size:11px;min-width:11px;text-align:center;display:inline-block">'+n+'</b><button class="btn" style="padding:0 4px;font-size:12px;min-width:0" onclick="adjustBasic(\''+jsq(k)+'\',\''+jsq(nm)+'\',1)">+</button></div>'; }).join("");
+    var por='<div class="ppick" title="클릭: 캐릭터 정보로 이동" onclick="goChar(\''+jsq(k)+'\')" style="width:100%;aspect-ratio:1/1;border-radius:6px;overflow:hidden;background:#0a0a12">'+(im?'<img src="'+im+'" style="width:100%;height:100%;object-fit:cover">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center" class="cnt">'+esc((ch&&ch.n||k).slice(0,2))+'</div>')+'</div>';
+    slots.push('<div style="border:1px solid var(--line);border-radius:10px;padding:4px;text-align:center;background:rgba(120,150,200,.06);min-width:0;overflow:hidden">'+por+'<div class="pname" title="클릭: 캐릭터 정보로 이동" onclick="goChar(\''+jsq(k)+'\')" style="font-weight:800;font-size:12px;margin:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(ch&&ch.n||k)+' ›</div><div class="cnt" style="font-size:10px;margin:-1px 0 3px">카드 '+charDeckCount(k)+'장</div>'+steps+'<div style="border-top:1px solid var(--line);margin-top:5px;padding-top:5px;display:flex;flex-direction:column;gap:3px"><button class="btn sm" style="width:100%;padding:3px 0;font-size:11px" onclick="resetBasics(\''+jsq(k)+'\')">리셋</button><button class="btn sm danger" style="width:100%;padding:3px 0;font-size:11px" onclick="removeCharAll(\''+jsq(k)+'\')">비우기</button></div></div>');
+  });
+  for(var e=owners.length;e<4;e++){ slots.push('<div onclick="openCharPicker()" title="캐릭터 추가" style="border:2px dashed var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;min-height:128px;cursor:pointer;color:var(--tx3);font-size:30px">+</div>'); }
+  return '<div style="margin:6px 0;padding:4px 10px">'+head+'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">'+slots.join("")+'</div></div>';
 }
+function goChar(k){ var p=document.getElementById("deckPanel"); if(p)p.classList.add("hide"); if(typeof openChar==="function")openChar(k); }
+function openCharPicker(){ var ex=document.getElementById("charPicker"); if(ex)ex.remove();
+  var ov=document.createElement("div"); ov.id="charPicker";
+  ov.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center";
+  ov.innerHTML='<div style="background:#151a24;border:1px solid var(--line);border-radius:12px;padding:12px;width:min(92vw,360px);max-height:80vh;display:flex;flex-direction:column"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>캐릭터 추가</b><span style="cursor:pointer;font-weight:800;font-size:16px" onclick="document.getElementById(\'charPicker\').remove()">✕</span></div><input id="cpSearch" placeholder="이름·영문 검색" style="width:100%;margin-bottom:8px;box-sizing:border-box" oninput="renderCharPicker()"><div id="cpList" style="overflow:auto"></div></div>';
+  ov.onclick=function(ev){ if(ev.target===ov)ov.remove(); };
+  document.body.appendChild(ov); renderCharPicker();
+  var si=document.getElementById("cpSearch"); if(si)si.focus();
+}
+function renderCharPicker(){ var box=document.getElementById("cpList"); if(!box)return;
+  var q=((document.getElementById("cpSearch")||{}).value||"").toLowerCase();
+  var inParty=partyChars();
+  var list=(DB.chars||[]).filter(function(c){return c.k!=="Lucy"&&c.k!=="LucyLeader"&&inParty.indexOf(c.k)<0;});
+  if(q)list=list.filter(function(c){return ((c.n||"")+(c.en||"")).toLowerCase().indexOf(q)>=0;});
+  box.innerHTML=list.map(function(c){ var im=charImg(c);
+    return '<div onclick="pickChar(\''+jsq(c.k)+'\')" style="display:flex;align-items:center;gap:8px;padding:5px;cursor:pointer;border-radius:6px" onmouseover="this.style.background=\'rgba(255,255,255,.07)\'" onmouseout="this.style.background=\'\'"><div style="width:34px;height:34px;border-radius:5px;overflow:hidden;background:#0a0a12;flex:0 0 auto">'+(im?'<img src="'+im+'" style="width:100%;height:100%;object-fit:cover">':'')+'</div><span>'+esc(c.n)+' <span class="cnt">'+esc(c.role||"")+'</span></span></div>'; }).join("")||'<div class="cnt" style="padding:6px">추가할 캐릭터가 없습니다.</div>';
+}
+function pickChar(k){ addBasicsFor(k); var p=document.getElementById("charPicker"); if(p)p.remove(); }
 function deckCount(){ return myDeck.length; }
 function deckGrouped(){ const m=new Map(); myDeck.forEach(e=>{const k=e.owner+"|"+e.name; if(!m.has(k))m.set(k,{owner:e.owner,name:e.name,qty:0}); m.get(k).qty++;});
   return [...m.values()].map(o=>({...o,card:cardByNameOwner(o.owner,o.name)})).filter(o=>o.card); }
