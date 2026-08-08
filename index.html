@@ -406,7 +406,7 @@
       <select class="search" id="ownerFilter" style="flex:0 0 130px"></select>
       <select class="search" id="cardSort" style="flex:0 0 130px">
         <option value="def">정렬: 기본</option><option value="costA">코스트 낮은순</option><option value="costD">코스트 높은순</option>
-        <option value="dmgD">피해 높은순</option><option value="dmgA">피해 낮은순</option><option value="name">이름순</option><option value="target">대상별</option>
+        <option value="dmgD">피해 높은순</option><option value="dmgA">피해 낮은순</option><option value="healD">회복 높은순</option><option value="healA">회복 낮은순</option><option value="name">이름순</option><option value="target">대상별</option>
       </select>
       <input class="search" id="kSearch" placeholder="카드 검색 (이름·효과)" style="min-width:120px">
       <button class="btn sm" onclick="clearCardFacets()">필터 초기화</button>
@@ -460,7 +460,8 @@
         <label>시작 마나</label><input type="number" id="mana" value="3" min="0" max="20" style="width:70px">
         <button class="btn p" onclick="startDraw()">첫 손패 뽑기</button>
         <button class="btn" id="redrawBtn" onclick="redraw()" disabled>멀리건</button>
-        <button class="btn" id="drawOneBtn" onclick="drawOne()" disabled>+1 드로우</button>
+        <button class="btn" id="drawOneBtn" onclick="drawOne()" disabled>+2 드로우</button>
+        <button class="btn" onclick="suggestParty()">🎲 랜덤 2캐릭터</button>
         <span class="cnt" id="drawstat" style="align-self:center"></span>
       </div>
       <div class="hand" id="hand"><div class="empty">덱을 담고 첫 손패를 뽑아보세요.</div></div>
@@ -826,7 +827,7 @@ function renderDetail(k){
        </div>
        <select class="search" id="dCardSort" style="flex:0 0 130px">
          <option value="def">정렬: 기본</option><option value="costA">코스트 낮은순</option><option value="costD">코스트 높은순</option>
-         <option value="dmgD">피해 높은순</option><option value="dmgA">피해 낮은순</option><option value="name">이름순</option><option value="target">대상별</option>
+         <option value="dmgD">피해 높은순</option><option value="dmgA">피해 낮은순</option><option value="healD">회복 높은순</option><option value="healA">회복 낮은순</option><option value="name">이름순</option><option value="target">대상별</option>
        </select>
        <button class="btn sm" onclick="dClearFac()">필터 해제</button>
      </div>
@@ -1051,7 +1052,8 @@ function cardMatchKw(c,kw){if(kw==="드로우")return /드로우|뽑/.test(c.eff
 function cardTarget(c){return c.target||"적 대상";}
 function cardDamage(c){const m=(c.eff||"").match(/피해\s*(\d+)/)||(c.eff||"").match(/피해량\s*(\d+)/);return m?parseInt(m[1]):0;}
 function cardDmgVal(c){return (c.dmg!=null)?c.dmg:cardDamage(c);}
-function sortCardsBy(list,mode){const ci=c=>parseInt(c.cost)||0;const by={costA:(a,b)=>ci(a)-ci(b),costD:(a,b)=>ci(b)-ci(a),dmgD:(a,b)=>cardDmgVal(b)-cardDmgVal(a),dmgA:(a,b)=>cardDmgVal(a)-cardDmgVal(b),name:(a,b)=>a.name.localeCompare(b.name,'ko'),target:(a,b)=>cardTarget(a).localeCompare(cardTarget(b),'ko')};return by[mode]?list.slice().sort(by[mode]):list;}
+function cardHealVal(c){var e=(c.eff||"")+" "+(c.note||"");var m=e.match(/회복량\s*(\d+)/)||e.match(/회복\s*(\d+)/)||e.match(/치유\s*(\d+)/);return m?parseInt(m[1]):0;}
+function sortCardsBy(list,mode){const ci=c=>parseInt(c.cost)||0;const by={costA:(a,b)=>ci(a)-ci(b),costD:(a,b)=>ci(b)-ci(a),dmgD:(a,b)=>cardDmgVal(b)-cardDmgVal(a),dmgA:(a,b)=>cardDmgVal(a)-cardDmgVal(b),healD:(a,b)=>cardHealVal(b)-cardHealVal(a),healA:(a,b)=>cardHealVal(a)-cardHealVal(b),name:(a,b)=>a.name.localeCompare(b.name,'ko'),target:(a,b)=>cardTarget(a).localeCompare(cardTarget(b),'ko')};return by[mode]?list.slice().sort(by[mode]):list;}
 function filterCardsBy(list,o){let r=list.slice();
   if(o.type&&o.type!=="all")r=r.filter(c=>c.type===o.type);
   if(o.owner&&o.owner!=="all")r=r.filter(c=>c.owner===o.owner);
@@ -1150,7 +1152,7 @@ function renderData(){
   const cols=dataMode==="char"?CHAR_COLS:CARD_COLS, rows=dataMode==="char"?DB.chars:DB.cards, t=document.getElementById("dataTable");
   let h="<thead><tr>"+cols.map(c=>`<th style="min-width:${c[2]}px">${c[1]}</th>`).join("")+"<th style='min-width:44px'></th></tr></thead><tbody>";
   rows.forEach((row,ri)=>{h+="<tr>"+cols.map(c=>{const f=c[0],ty=c[3];
-    if(ty==="img"){const cur=fget(row,f),isData=cur&&cur.startsWith("data:");const im=cur?`<img class="thumb" src="${cur}">`:`<span class="cnt">없음</span>`;
+    if(ty==="img"){const cur=fget(row,f),isData=cur&&cur.startsWith("data:");const _r=dataImgResolve(row,f);const im=_r.src?`<img class="thumb" src="${_r.src}">`+(_r.baked?`<span class="cnt" style="color:#79c0ff;display:block">폴더 이미지</span>`:``):`<span class="cnt">없음</span>`;
       return `<td>${im}
         <input placeholder="이미지 URL 붙여넣기" value="${isData?'':esc(cur||'')}" style="margin-top:3px;font-size:10px" onchange="editCell('${dataMode}',${ri},'${f}',this.value)">
         <label class="btn sm" style="cursor:pointer;display:block;margin-top:2px;text-align:center">파일 업로드<input type="file" accept="image/*" class="hide" onchange="uploadImg(event,'${dataMode}',${ri},'${f}')"></label>
@@ -1327,7 +1329,7 @@ function renderDeckPanel(){ const p=document.getElementById("deckPanel"); if(!p)
    <div class="dp-head"><b>내 덱 <span class="cnt">${deckCount()}장 · ${g.length}종</span></b><div style="cursor:pointer;font-weight:800;font-size:16px" onclick="closeDeckPanel()">✕</div></div>
    <div class="dp-tools">
      <input id="dpSaveName" placeholder="덱 이름 입력 후 저장" style="flex:1">
-     <button class="btn sm" onclick="deckSaveNamed()">💾 저장</button>
+     <button class="btn sm" onclick="deckSaveNamed()">💾 저장</button><button class="btn sm" onclick="suggestParty()">🎲 랜덤 2캐릭터</button>
      <select id="dpLoadSel" onchange="deckLoadNamed(this.value);this.value=''"><option value="">📂 불러오기…</option>${names.map(n=>`<option>${esc(n)}</option>`).join("")}</select>
    </div>
    <div class="dp-list">${ g.length? g.map(o=>`
@@ -1397,10 +1399,12 @@ function renderSimDeck(){ const box=document.getElementById("simDeckGrid"); if(!
 /* --- 드로우 시뮬 --- */
 function totalDeck(){ return deckCardObjs().map(c=>({...c})); }
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function pickRandomParty(){var ch=(DB.chars||[]).filter(c=>c.k!=="Lucy"&&c.k!=="LucyLeader");if(ch.length<2)return null;for(var i=ch.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=ch[i];ch[i]=ch[j];ch[j]=t;}return[ch[0],ch[1]];}
+function suggestParty(){var p=pickRandomParty();if(!p){alert("캐릭터가 부족합니다.");return;}alert("🎲 랜덤 도전 캐릭터 2명\n\n① "+p[0].n+" · "+p[0].role+"\n② "+p[1].n+" · "+p[1].role+"\n\n(다시 누르면 새로 뽑습니다)");}
 function drawCount(){return Math.max(1,deckOwners().length+1);}
 function startDraw(){const deck=totalDeck();if(!deck.length){alert("덱에 담긴 카드가 없습니다.");return;}const need=drawCount();if(deck.length<need&&!confirm(`덱이 ${deck.length}장으로 드로우 수(${need})보다 적습니다. 진행할까요?`))return;sim.mana=Math.max(0,parseInt(document.getElementById("mana").value)||0);sim.pile=shuffle(deck.map(c=>({...c,id:++sim.uid})));sim.hand=sim.pile.splice(0,Math.min(need,sim.pile.length));renderHand();}
 function redraw(){if(!sim.hand.length)return;sim.pile=shuffle(sim.pile.concat(sim.hand));const need=drawCount();sim.hand=sim.pile.splice(0,Math.min(need,sim.pile.length));renderHand();}
-function drawOne(){if(!sim.pile.length){alert("덱이 비었습니다.");return;}sim.hand.push(sim.pile.shift());renderHand();}
+function drawOne(){if(!sim.pile.length){alert("덱이 비었습니다.");return;}sim.hand.push(sim.pile.shift());if(sim.pile.length)sim.hand.push(sim.pile.shift());renderHand();}
 function swapCard(i){if(!sim.pile.length){alert("덱이 비어 교환 불가");return;}sim.pile.push(sim.hand[i]);shuffle(sim.pile);sim.hand[i]=sim.pile.shift();renderHand();}
 function renderHand(){const box=document.getElementById("hand");if(!box)return;box.innerHTML="";const rb=document.getElementById("redrawBtn"),db=document.getElementById("drawOneBtn");if(rb)rb.disabled=!sim.hand.length;if(db)db.disabled=!sim.pile.length;
   document.getElementById("drawinfo").textContent=`드로우 ${drawCount()}장 (캐릭터 ${deckOwners().length} + 1)`;
@@ -1408,7 +1412,7 @@ function renderHand(){const box=document.getElementById("hand");if(!box)return;b
   if(!sim.hand.length){box.innerHTML='<div class="empty">덱을 담고 첫 손패를 뽑아보세요.</div>';return;}
   sim.hand.forEach((c,i)=>{const el=document.createElement("div");el.className="pcard";el.onclick=()=>swapCard(i);el.title="클릭: 1장 교환";
     el.innerHTML=`<div class="kbar" style="background:${typeVar(c.type)}"></div><div class="ktop"><div class="gem"><span>${c.cost}</span></div><div class="kname">${esc(c.name)}</div></div>
-      <div class="kbody" style="flex:1">${esc(c.eff)}</div><div class="owner" style="color:${roleVar(charByK(c.owner)?.role)}">${esc(charByK(c.owner)?.n||c.owner)} · ${c.type}</div>`;box.appendChild(el);});}
+      <div class="kbody" style="flex:1">${esc(c.eff)}</div><div class="owner" style="color:${roleVar(charByK(c.owner)?.role)}">${esc(charByK(c.owner)?.n||c.owner)} · ${c.type}</div><button class="btn sm" style="margin-top:4px;width:100%" onclick="event.stopPropagation();swapCard(${i})">🔄 교체</button>`;box.appendChild(el);});}
 
 function normalizeBuffs(){ (DB.cards||[]).forEach(c=>{ if(c.buffs===undefined){ const p=splitEff(c.eff||""); c.buffs=p.buffs.map(b=>{const dd=splitDur(b.d),ss=splitStack(dd.eff);return {n:b.n,dur:dd.dur,stack:ss.stack,d:ss.eff?ss.eff.split(/,\s*/).map(x=>x.trim()).filter(Boolean):[]};}); c.eff=p.main; } }); }
 normalizeBuffs();
@@ -1471,6 +1475,12 @@ function applyEmbeddedImages(){
 function charImg(ch){ return (ch&&ch.img)||(ch&&typeof IMGX!=='undefined'&&IMGX&&IMGX[ch.k])||''; }
 function cardImgSrc(c){ return (c&&c.img)||(c&&typeof CARDIMGX!=='undefined'&&CARDIMGX&&CARDIMGX[c.owner+'|'+c.name])||''; }
 function passImgSrc(k,pas,pcard){ return (pas&&pas.img)||(typeof PASSIVEX!=='undefined'&&PASSIVEX&&PASSIVEX[k])||(pcard&&pcard.img)||''; }
+function dataImgResolve(row,f){var cur=fget(row,f);if(cur)return{src:cur,baked:false};
+  if(dataMode==="char"){
+    if(f==="img"){var b=(typeof IMGX!=='undefined'&&IMGX&&IMGX[row.k])||'';return{src:b,baked:!!b};}
+    if(f==="passive.img"){var b=(typeof PASSIVEX!=='undefined'&&PASSIVEX&&PASSIVEX[row.k])||'';return{src:b,baked:!!b};}
+  }else{if(f==="img"){var b=(typeof CARDIMGX!=='undefined'&&CARDIMGX&&CARDIMGX[row.owner+'|'+row.name])||'';return{src:b,baked:!!b};}}
+  return{src:'',baked:false};}
 applyEmbeddedImages();
 if(dbFromStore){try{save();}catch(e){}}
 show('home');
@@ -1496,7 +1506,7 @@ var FIREBASE_CONFIG={apiKey:"AIzaSyCUyehTkADDetADLnWAlcdqKfrpgOXS9Eg",authDomain
     var sd=document.getElementById("charSidebar"); if(sd&&!sd.classList.contains("hide")){renderCharSidebar();}
     var dt=document.getElementById("v-data"); if(dt&&!dt.classList.contains("hide")&&typeof renderData==="function"){renderData();}
   }
-  imgCol.onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ fbApply(ch.doc.id, ch.type==="removed"?{img:""}:ch.doc.data()); }); fbRerender(); },
+  imgCol.onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ fbApply(ch.doc.id, ch.type==="removed"?{img:""}:ch.doc.data()); }); fbRerender(); try{clearTimeout(window.__fbSaveT);window.__fbSaveT=setTimeout(function(){try{save();}catch(e){}},500);}catch(e){} },
     function(err){console.warn("firebase snapshot",err);});
   window.__fbPush=function(kind,key,dataUri){ if(!window.__fdb)return; imgCol.doc(docId(kind,key)).set({img:dataUri||"",pw:"960612"}).catch(function(e){console.warn("fb push",e);}); };
   // 시딩용: 현재 DB의 모든 이미지를 클라우드로 올림
