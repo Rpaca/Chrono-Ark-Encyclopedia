@@ -473,7 +473,7 @@
 
   <section id="v-data" class="hide">
     <div class="toolbar">
-      <div class="seg" id="dataSeg"><button class="on" data-d="char">캐릭터 DB</button><button data-d="card">카드 DB</button></div>
+      <div class="seg" id="dataSeg"><button class="on" data-d="char">캐릭터 DB</button><button data-d="card">카드 DB</button><button data-d="stat">스탯 DB</button></div>
       <button class="btn p sm" onclick="addRow()">+ 행 추가</button>
       <button class="btn sm" onclick="exportCharCSV()">CSV↓ 캐릭터표</button>
       <button class="btn sm" onclick="exportCardCSV()">CSV↓ 카드표</button>
@@ -1149,7 +1149,7 @@ function renderCardDex(){
 /* ================= 데이터 편집 ================= */
 let dataMode="char";
 document.querySelectorAll("#dataSeg button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#dataSeg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");dataMode=b.dataset.d;renderData();});
-const CHAR_COLS=[["k","키",72],["no","No",44],["n","이름",76],["en","영문",76],["role","역할",64,"sel",["리더","공격","방어","지원"]],["diff","난이도",54,"sel",["하","중","상"]],["unlock","해금 조건",120],["intro","한 줄 소개",180],["mech","핵심 메커니즘",200],["__tags","특징태그(;)",130],["__syn","시너지(키=설명|…)",220],["passive.n","패시브명",90],["passive.d","패시브설명",220],["passive.img","패시브이미지",70,"img"],["__stats","능력치(레벨;스탯|)",220],["img","캐릭터이미지",70,"img"]];
+const CHAR_COLS=[["k","키",72],["no","No",44],["n","이름",76],["en","영문",76],["role","역할",64,"sel",["리더","공격","방어","지원"]],["diff","난이도",54,"sel",["하","중","상"]],["unlock","해금 조건",120],["intro","한 줄 소개",180],["mech","핵심 메커니즘",200],["__tags","특징태그(;)",130],["__syn","시너지(키=설명|…)",220],["passive.n","패시브명",90],["passive.d","패시브설명",220],["passive.img","패시브이미지",70,"img"],["img","캐릭터이미지",70,"img"]];
 const CARD_COLS=[["name","카드명",120],["owner","소유",88,"owner"],["cat","분류",110],["cost","코스트",48],["type","타입",68,"sel",["공격","지원","방어","특수"]],["target","대상",92,"sel",["적 대상","모든 적","다른 아군","모든 아군","자신"]],["kw","키워드",120],["eff","효과(본문)",200],["__bn","부여이름(|)",110],["__bdur","부여지속(|)",90],["__bstk","부여스택(|)",80],["__bd","부여효과(|)",220],["count","카운트",56],["dmg","피해량",56],["pct","피해율",64],["hit","명중률",56],["crit","치명타",56],["note","비고",120],["img","이미지",70,"img"]];
 function fget(row,f){if(f.indexOf(".")>=0){const p=f.split(".");return (row[p[0]]||{})[p[1]]||"";}return row[f];}
 function fset(row,f,v){if(f.indexOf(".")>=0){const p=f.split(".");if(!row[p[0]])row[p[0]]={};row[p[0]][p[1]]=v;return;}row[f]=v;}
@@ -1172,7 +1172,25 @@ function setBuffField(row,key,v){
   });
   row.buffs=row.buffs.filter(b=>b.n||b.dur||b.stack||(b.d&&b.d.length));
 }
+function renderStatData(){
+  const t=document.getElementById("dataTable"); const L=STAT_COLS;
+  let h="<thead><tr><th style='min-width:70px'>키</th><th style='min-width:80px'>이름</th>"+L.map(l=>`<th style='min-width:120px'>${esc(l)}</th>`).join("")+"</tr></thead><tbody>";
+  DB.chars.forEach((row,ri)=>{ const st=row.stats;
+    h+="<tr><td>"+esc(row.k)+"</td><td>"+esc(row.n||"")+"</td>"+L.map((l,si)=>{
+      const vals=(st&&st.length)?st.map(r=>(r&&r[si]!=null)?r[si]:0).join(";"):"";
+      return `<td><input value="${esc(vals)}" placeholder="Lv1;Lv2;…;MAX" style="font-size:11px" onchange="editStat(${ri},${si},this.value)"></td>`;
+    }).join("")+"</tr>"; });
+  t.innerHTML=h+"</tbody>";
+}
+function editStat(ri,si,v){ const c=DB.chars[ri]; if(!c)return;
+  const parts=(v||"").split(";").map(x=>x.trim()).filter(x=>x!=="").map(x=>parseInt(x)||0);
+  const N=STAT_COLS.length; let L=Math.max((c.stats?c.stats.length:0), parts.length, 6);
+  if(!c.stats)c.stats=[];
+  for(let l=0;l<L;l++){ if(!c.stats[l])c.stats[l]=new Array(N).fill(0); while(c.stats[l].length<N)c.stats[l].push(0); if(l<parts.length)c.stats[l][si]=parts[l]; }
+  save();
+}
 function renderData(){
+  if(dataMode==="stat")return renderStatData();
   const cols=dataMode==="char"?CHAR_COLS:CARD_COLS, rows=dataMode==="char"?DB.chars:DB.cards, t=document.getElementById("dataTable");
   let h="<thead><tr>"+cols.map(c=>`<th style="min-width:${c[2]}px">${c[1]}</th>`).join("")+"<th style='min-width:44px'></th></tr></thead><tbody>";
   rows.forEach((row,ri)=>{h+="<tr>"+cols.map(c=>{const f=c[0],ty=c[3];
@@ -1199,7 +1217,7 @@ function editCell(m,ri,f,v){const row=(m==="char"?DB.chars:DB.cards)[ri];
   else if(f==="no"||f==="cost"||f==="dmg"||f==="hit"||f==="crit"||f==="count"){const n=parseInt(v);fset(row,f,(v===""?"":(isNaN(n)?v:n)));}
   else fset(row,f,v);
   save();document.getElementById("ownerFilter").dataset.built="0";}
-function addRow(){if(dataMode==="char")DB.chars.push({k:"Custom"+Date.now(),n:"새 캐릭터",en:"",no:DB.chars.length+1,role:"공격",emoji:"❔",weapon:"",diff:"중",unlock:"",intro:"",mech:"",tags:[],synergy:[],img:""});
+function addRow(){if(dataMode==="stat"){alert("스탯 DB에서는 행을 추가할 수 없습니다. 캐릭터 DB에서 캐릭터를 추가하세요.");return;}if(dataMode==="char")DB.chars.push({k:"Custom"+Date.now(),n:"새 캐릭터",en:"",no:DB.chars.length+1,role:"공격",emoji:"❔",weapon:"",diff:"중",unlock:"",intro:"",mech:"",tags:[],synergy:[],img:""});
   else DB.cards.push({name:"새 카드",owner:"공용",cat:"공용 스킬",cost:1,type:"공격",target:"적 대상",kw:"",eff:"",note:"",img:""});
   document.getElementById("ownerFilter").dataset.built="0";save();renderData();}
 function delRow(ri){if(!confirm("이 행을 삭제할까요?"))return;(dataMode==="char"?DB.chars:DB.cards).splice(ri,1);document.getElementById("ownerFilter").dataset.built="0";save();renderData();}
