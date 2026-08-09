@@ -357,9 +357,9 @@
   <div class="logo" onclick="show('home')" style="cursor:pointer" title="홈으로">크로노아크 <b>도감</b></div>
   <nav>
     <div class="tab on" data-v="home">캐릭터</div>
-    <div class="tab" data-v="synergy">시너지</div>
     <div class="tab" data-v="cards">카드</div>
     <div class="tab" data-v="sim">시뮬레이터</div>
+    <div class="tab" data-v="synergy">시너지</div>
     <div class="tab" data-v="data">데이터 편집</div>
   </nav>
 </div></header>
@@ -719,13 +719,13 @@ let dbFromStore=false;
 let DB=load(); applyLucyLeader(DB); applyBasics(DB);
 function __parseCSVsyn(t){var rows=[],row=[],f="",q=false,DQ=34,CM=44,NL=10;t=String(t).replace(/\r/g,"");for(var i=0;i<t.length;i++){var cc=t.charCodeAt(i),c=t[i];if(q){if(cc===DQ){if(t.charCodeAt(i+1)===DQ){f+=String.fromCharCode(34);i++;}else q=false;}else f+=c;}else{if(cc===DQ)q=true;else if(cc===CM){row.push(f);f="";}else if(cc===NL){row.push(f);rows.push(row);row=[];f="";}else f+=c;}}if(f!==""||row.length){row.push(f);rows.push(row);}return rows;}
 (function(){ try{ fetch("synergy.csv?v="+Date.now()).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(txt){
-  var rows=__parseCSVsyn(txt); if(!rows.length)return; var map={};
+  var rows=__parseCSVsyn(txt); if(!rows.length)return; if(dbFromStore)return; var map={};
   for(var i=1;i<rows.length;i++){var rw=rows[i]; if(rw&&rw[0]) map[rw[0].trim()]=(rw[2]||"");}
   (DB.chars||[]).forEach(function(c){ if(map[c.k]!==undefined){ var blob=map[c.k]; c.synergy = blob? blob.split("|").map(function(e){var p=e.split("=");return {k:(p[0]||"").trim(),w:p.slice(1).join("=").trim()};}).filter(function(x){return x.k;}):[]; } });
   var v=document.getElementById("v-chars"); if(v&&!v.classList.contains("hide")&&typeof renderChars==="function")renderChars();
   var d=document.getElementById("v-data"); if(d&&!d.classList.contains("hide")&&typeof renderData==="function")renderData();
 }).catch(function(){}); }catch(e){} })();
-(function(){ try{ fetch("traits.csv?v="+Date.now()).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(txt){ var rows=__parseCSVsyn(txt); if(!rows.length)return; var map={}; for(var i=1;i<rows.length;i++){var rw=rows[i]; if(rw&&rw[0]) map[rw[0].trim()]=(rw[2]||"");} (DB.chars||[]).forEach(function(c){ if(map[c.k]!==undefined){ var t=map[c.k]; c.traits = t? t.split(",").map(function(x){return x.trim();}).filter(Boolean):[]; } }); var vc=document.getElementById("v-chars"); if(vc&&!vc.classList.contains("hide")&&typeof renderChars==="function")renderChars(); }).catch(function(){}); }catch(e){} })();
+(function(){ try{ fetch("traits.csv?v="+Date.now()).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(txt){ var rows=__parseCSVsyn(txt); if(!rows.length)return; if(dbFromStore)return; var map={}; for(var i=1;i<rows.length;i++){var rw=rows[i]; if(rw&&rw[0]) map[rw[0].trim()]=(rw[2]||"");} (DB.chars||[]).forEach(function(c){ if(map[c.k]!==undefined){ var t=map[c.k]; c.traits = t? t.split(",").map(function(x){return x.trim();}).filter(Boolean):[]; } }); var vc=document.getElementById("v-chars"); if(vc&&!vc.classList.contains("hide")&&typeof renderChars==="function")renderChars(); }).catch(function(){}); }catch(e){} })();
 function load(){try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s); if(d.chars&&d.cards){dbFromStore=true;return d;}}}catch(e){} return JSON.parse(JSON.stringify(DEFAULT));}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));flash();}catch(e){flash("저장 불가(용량)");}}
 function flash(m){const el=document.getElementById("saveState");if(el){el.textContent=m||"✔ 저장됨 "+new Date().toLocaleTimeString();setTimeout(()=>el.textContent="",1800);}}
@@ -1354,7 +1354,7 @@ function importSynergyCSV(text){
     const v=(r[si]||"").trim();
     c.synergy=v?v.split("|").map(e=>{const p=e.split("=");return{k:(p[0]||"").trim(),w:p.slice(1).join("=").trim()};}).filter(x=>x.k):[];
     upd++;});
-  save();renderData();alert("시너지 CSV 적용 완료 (갱신 "+upd+(miss?" · 미매칭 "+miss:"")+")");
+  save();refreshAll();alert("시너지 CSV 적용 완료 (갱신 "+upd+(miss?" · 미매칭 "+miss:"")+")");
 }
 function importTraitsCSV(text){
   const rows=parseCSV(text);if(rows.length<2){alert("특성 CSV가 비어 있습니다.");return;}
@@ -1365,7 +1365,13 @@ function importTraitsCSV(text){
     const v=(r[ti]||"").trim();
     c.traits=v?v.split(",").map(s=>s.trim()).filter(Boolean):[];
     upd++;});
-  save();renderData();alert("특성 CSV 적용 완료 (갱신 "+upd+(miss?" · 미매칭 "+miss:"")+")");
+  save();refreshAll();alert("특성 CSV 적용 완료 (갱신 "+upd+(miss?" · 미매칭 "+miss:"")+")");
+}
+function refreshAll(){
+  try{if(typeof renderData==="function")renderData();}catch(e){}
+  try{if(typeof renderSynMap==="function")renderSynMap();}catch(e){}
+  try{if(typeof renderChars==="function")renderChars();}catch(e){}
+  try{if(typeof renderCardDex==="function")renderCardDex();}catch(e){}
 }
 (function(){const a=document.getElementById("impCharCSV"),b=document.getElementById("impCardCSV");
   const sc=document.getElementById("impSynCSV"),tc=document.getElementById("impTraitCSV");
