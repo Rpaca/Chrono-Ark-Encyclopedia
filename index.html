@@ -477,10 +477,7 @@
       <button class="btn p sm" onclick="addRow()">+ 행 추가</button>
       <button class="btn sm" onclick="exportCharCSV()">CSV↓ 캐릭터표</button>
       <button class="btn sm" onclick="exportCardCSV()">CSV↓ 카드표</button><button class="btn sm" onclick="exportSynergyCSV()">시너지 CSV↓</button><button class="btn sm" onclick="exportTraitsCSV()">특성 CSV↓</button>
-      <label class="btn sm" style="cursor:pointer">CSV↑ 캐릭터표<input type="file" id="impCharCSV" accept=".csv" class="hide"></label>
-      <label class="btn sm" style="cursor:pointer">CSV↑ 카드표<input type="file" id="impCardCSV" accept=".csv" class="hide"></label>
-      <label class="btn sm" style="cursor:pointer">시너지 CSV↑<input type="file" id="impSynCSV" accept=".csv" class="hide"></label>
-      <label class="btn sm" style="cursor:pointer">특성 CSV↑<input type="file" id="impTraitCSV" accept=".csv" class="hide"></label>
+      <label class="btn sm p" style="cursor:pointer">CSV 업로드(자동 인식)<input type="file" id="impAutoCSV" accept=".csv" class="hide"></label>
       <button class="btn sm" onclick="exportJSON()">JSON↓</button>
       <label class="btn sm" style="cursor:pointer">JSON↑<input type="file" id="importFile" accept=".json" class="hide"></label>
       <button class="btn sm danger" onclick="resetData()">기본값 복원</button><button class="btn sm" onclick="showVisitLog()">📊 방문 기록</button>
@@ -712,11 +709,21 @@ var BASIC_CARDS=[
 ];
 function applyBasics(T){ if(!T||!T.cards)return; BASIC_CARDS.forEach(function(b){ if(!T.cards.some(function(c){return c.owner==="공용"&&c.name===b.name;})) T.cards.push(JSON.parse(JSON.stringify(b))); }); }
 applyBasics(DEFAULT);
+var DUO_CARDS=[
+ {name:"환영검무",owner:"듀오",cat:"시그니처 듀오",cost:2,type:"공격",target:"적 대상",kw:"고정 능력 지정 불가",duo:["Lucy","Azar"],sig:"스텝 × 환영검",grade:"Duo",dmg:20,pct:"",hit:100,crit:20,note:"루시 × 아자르",eff:"두 캐릭터가 함께 공격하는 콤보 컷신. 아군의 대기 횟수가 1 증가할 때마다 다음 중 하나를 선택합니다. • 환영검 1개를 손으로 가져옵니다. • 손에 있는 스킬 1개에 환영검을 부여합니다. (효과 대상: 모든 아군) 영구 지속.",img:""},
+ {name:"받은 만큼 갚아 줄게♡",owner:"듀오",cat:"시그니처 듀오",cost:2,type:"공격",target:"적 대상",kw:"고정 능력 지정 불가",duo:["Momori","Rian"],sig:"내면의 욕망 × 패링",grade:"Duo",dmg:15,pct:"",hit:105,crit:30,note:"모모리 × 리안",eff:"두 캐릭터가 함께 공격하는 콤보 컷신. 아군이 패링에 성공할 때마다 내면의 욕망의 피해가 150% 증가합니다. (누적, 상한 없음) (효과 대상: 모든 아군) 영구 지속.",img:""},
+ {name:"얼음과 불의 일격",owner:"듀오",cat:"시그니처 듀오",cost:2,type:"공격",target:"적 대상",kw:"",duo:["MissChain","Illiya"],sig:"화르륵! × 납도",grade:"Duo",dmg:15,pct:"",hit:100,crit:25,note:"미스 체인 × 일리야",eff:"두 캐릭터가 함께 공격하는 콤보 컷신. 화르륵! 상태의 아군이 스킬을 사용하면 손에서 스킬 1장을 버리고, 무작위 적에게 서리(고통 디버프 성공률 115%)를 부여합니다. (효과 대상: 모든 아군) 영구 지속.",img:""},
+ {name:"역병 확산",owner:"듀오",cat:"공용 듀오",cost:2,type:"공격",target:"모든 적",kw:"",tag:"도트",eligible:["Joey","Karon","MissChain","Helia","Illiya"],grade:"Duo",dmg:21,pct:"",hit:100,crit:10,note:"공용 태그 · 도트",eff:"두 캐릭터가 함께 공격하는 콤보 컷신. 매 턴 종료 시 고통 디버프를 가진 모든 적의 고통 중첩을 각각 3씩 추가합니다. (효과 대상: 모든 적) 영구 지속.",img:""},
+ {name:"불괴의 진",owner:"듀오",cat:"공용 듀오",cost:2,type:"방어",target:"적 대상",kw:"",tag:"보호막",eligible:["Shys","Ironheart","Selena","Narhan","Rerin"],grade:"Duo",dmg:15,pct:"",hit:100,crit:15,note:"공용 태그 · 보호막",eff:"두 캐릭터가 함께 공격하는 콤보 컷신. 매 턴 종료 시 모든 아군의 보호막 버프에 8을 추가합니다. (효과 대상: 모든 아군) 영구 지속.",img:""},
+ {name:"피의 계약",owner:"듀오",cat:"공용 듀오",cost:2,type:"공격",target:"적 대상",kw:"",tag:"자해",eligible:["Hein","Karon","MissChain","Phoenix","Momori"],grade:"Duo",dmg:18,pct:"",hit:100,crit:20,note:"공용 태그 · 자해",eff:"두 캐릭터가 함께 공격하는 콤보 컷신. 파티원에 의해 파티원의 체력이 감소했을 경우, 지혈 스킬을 생성합니다. 지혈: 감소한 파티원의 카드로 생성(제외 · 신속 · 2턴 후 버려짐 · 카운트 2 · 회복 10). (효과 대상: 모든 아군) 영구 지속.",img:""}
+];
+function applyDuoCards(T){ if(!T||!T.cards)return; DUO_CARDS.forEach(function(d){ if(!T.cards.some(function(c){return c.owner==="듀오"&&c.name===d.name;})) T.cards.push(JSON.parse(JSON.stringify(d))); }); }
+applyDuoCards(DEFAULT);
 
 /* ================= 저장/로드 ================= */
 const KEY="chronoDex_v6";
 let dbFromStore=false;
-let DB=load(); applyLucyLeader(DB); applyBasics(DB);
+let DB=load(); applyLucyLeader(DB); applyBasics(DB); applyDuoCards(DB);
 function __parseCSVsyn(t){var rows=[],row=[],f="",q=false,DQ=34,CM=44,NL=10;t=String(t).replace(/\r/g,"");for(var i=0;i<t.length;i++){var cc=t.charCodeAt(i),c=t[i];if(q){if(cc===DQ){if(t.charCodeAt(i+1)===DQ){f+=String.fromCharCode(34);i++;}else q=false;}else f+=c;}else{if(cc===DQ)q=true;else if(cc===CM){row.push(f);f="";}else if(cc===NL){row.push(f);rows.push(row);row=[];f="";}else f+=c;}}if(f!==""||row.length){row.push(f);rows.push(row);}return rows;}
 (function(){ try{ fetch("synergy.csv?v="+Date.now()).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(txt){
   var rows=__parseCSVsyn(txt); if(!rows.length)return; if(dbFromStore)return; var map={};
@@ -727,7 +734,22 @@ function __parseCSVsyn(t){var rows=[],row=[],f="",q=false,DQ=34,CM=44,NL=10;t=St
 }).catch(function(){}); }catch(e){} })();
 (function(){ try{ fetch("traits.csv?v="+Date.now()).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(txt){ var rows=__parseCSVsyn(txt); if(!rows.length)return; if(dbFromStore)return; var map={}; for(var i=1;i<rows.length;i++){var rw=rows[i]; if(rw&&rw[0]) map[rw[0].trim()]=(rw[2]||"");} (DB.chars||[]).forEach(function(c){ if(map[c.k]!==undefined){ var t=map[c.k]; c.traits = t? t.split(",").map(function(x){return x.trim();}).filter(Boolean):[]; } }); var vc=document.getElementById("v-chars"); if(vc&&!vc.classList.contains("hide")&&typeof renderChars==="function")renderChars(); }).catch(function(){}); }catch(e){} })();
 function load(){try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s); if(d.chars&&d.cards){dbFromStore=true;return d;}}}catch(e){} return JSON.parse(JSON.stringify(DEFAULT));}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));flash();}catch(e){flash("저장 불가(용량)");}}
+let __view="home", __dataDirty=false;
+const EDIT_PW="960612";
+function __persist(){try{localStorage.setItem(KEY,JSON.stringify(DB));return true;}catch(e){flash("저장 불가(용량)");return false;}}
+function save(){ if(__view==="data"){ __dataDirty=true; flash("● 미저장 — 편집 탭을 나갈 때 비밀번호로 저장됩니다"); } else { if(__persist())flash(); } }
+function commitEditSave(){ if(!__dataDirty)return true; if(__persist()){__dataDirty=false;return true;} return false; }
+// 편집 탭을 나갈 때(다른 탭/새로고침/창 닫기) 저장 여부를 비밀번호로 확정
+function leaveDataGuard(){
+  if(!(__view==="data"&&__dataDirty))return true;
+  if(confirm("데이터 편집 내용을 저장할까요?\n(저장하려면 다음 화면에서 비밀번호를 입력하세요)")){
+    var pw=prompt("저장하려면 비밀번호를 입력하세요.");
+    if(pw===EDIT_PW){ if(commitEditSave())flash("✔ 저장됨 "+new Date().toLocaleTimeString()); return true; }
+    alert("비밀번호가 올바르지 않아 저장하지 않았습니다."); return true; // 저장은 안 하되 이동은 허용
+  }
+  __dataDirty=false; // 저장 안 함 선택 → 이후 경고 없이 이동(변경은 저장되지 않음)
+  return true;
+}
 function flash(m){const el=document.getElementById("saveState");if(el){el.textContent=m||"✔ 저장됨 "+new Date().toLocaleTimeString();setTimeout(()=>el.textContent="",1800);}}
 function charByK(k){return DB.chars.find(c=>c.k===k);}
 function roleVar(r){return{리더:"var(--lucy)",공격:"var(--atk)",방어:"var(--def)",지원:"var(--sup)"}[r]||"var(--tx3)";}
@@ -738,7 +760,8 @@ function passiveOf(k){return (charByK(k)||{}).passive||PASSIVE[k]||null;}
 
 /* ================= 라우팅 ================= */
 function show(v){
-  if(v==="data"&&!window.__edatOK){ var _pw=prompt("편집(데이터 편집) 비밀번호를 입력하세요"); if(_pw!=="960612"){ if(_pw!=null)alert("비밀번호가 올바르지 않습니다."); return; } window.__edatOK=true; }
+  if(__view==="data"&&v!=="data"){ leaveDataGuard(); }
+  __view=v;
   ["home","detail","synergy","cards","sim","data"].forEach(x=>document.getElementById("v-"+x).classList.toggle("hide",x!==v));
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));
   updateSidebarVisibility();
@@ -750,6 +773,8 @@ function show(v){
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>show(t.dataset.v));
+// 창 닫기·새로고침 시 미저장 편집 경고(브라우저 정책상 이 시점엔 비밀번호 입력창을 띄울 수 없어 네이티브 경고만 표시됩니다. 저장하려면 다른 탭으로 이동해 비밀번호로 저장하세요.)
+window.addEventListener("beforeunload",function(e){ if(__view==="data"&&__dataDirty){ e.preventDefault(); e.returnValue=""; } });
 
 /* ================= 캐릭터 그리드 ================= */
 let roleFilter="all",cQuery="",tagSet=new Set(),tagMode="and",sortMode="no",viewMode="card";
@@ -1027,7 +1052,8 @@ function kwColor(k){
   return"var(--tx2)";
 }
 function targetClass(t){return t==="자신"?"self":/아군/.test(t)?"ally":"enemy";}
-function rareClass(c){return /희귀/.test(c.cat)?"rare":c.cat==="듀오 카드"?"duo":c.cat==="루시 드로우 스킬"?"lucy":c.cat==="패시브"?"cpassive":"";}
+function rareClass(c){return /희귀/.test(c.cat)?"rare":(c.owner==="듀오"||/듀오/.test(c.cat))?"duo":c.cat==="루시 드로우 스킬"?"lucy":c.cat==="패시브"?"cpassive":"";}
+function duoLabel(c){ if(c.duo&&c.duo.length>=2)return (charByK(c.duo[0])?.n||c.duo[0])+" × "+(charByK(c.duo[1])?.n||c.duo[1]); if(c.tag)return "공용 · "+c.tag; return "듀오"; }
 let cardView="stat"; // 'stat' | 'effect'
 // 카드 효과를 본문 / 버프·디버프(대괄호 [이름] 표기) 칸으로 분리
 function splitEff(eff){
@@ -1091,7 +1117,7 @@ function cardHTML(c){
   const emoji=c.type==="지원"?"✚":c.type==="방어"?"◈":c.type==="특수"?"✦":"⚔";
   const _cim=cardImgSrc(c);
   const img=_cim?`<img src="${_cim}" loading="lazy">`:`<span class="kimg-ph">${emoji}</span>`;
-  const owner=c.owner==="공용"?"공용":(charByK(c.owner)?.n||c.owner);
+  const owner=c.owner==="공용"?"공용":c.owner==="듀오"?duoLabel(c):(charByK(c.owner)?.n||c.owner);
   const dmg=(c.dmg!=null)?c.dmg:cardDamage(c);
   const hasDmg=(c.dmg!=null)||dmg>0;
   const __c0=parseInt(c.cost)||0, __hv=cardHealVal(c), __pc=pctNum(c.pct), __isHeal=__hv>0, __dc=(hasDmg&&!__isHeal&&__pc!=null)?relColor(__pc,statAvgs().d[__c0]):"", __hc=(__isHeal&&__pc!=null)?relColor(__pc,statAvgs().h[__c0]):"";
@@ -1102,12 +1128,12 @@ function cardHTML(c){
   const top=(cardView==='effect')?dmgLine:statBlock;
   return `<div class="kcard ${rareClass(c)}" data-card="${esc(c.name)}" data-owner="${esc(c.owner)}">
     <div class="deckadd" title="덱에 담기">+</div>
-    <div class="kimg">${img}<span class="kgem">${esc(String(c.cost))}</span>${/희귀/.test(c.cat)?'<span class="rareflag">희귀</span>':c.cat==="루시 드로우 스킬"?'<span class="lucyflag">루시</span>':''}</div>
+    <div class="kimg">${img}<span class="kgem">${esc(String(c.cost))}</span>${c.owner==="듀오"?'<span class="rareflag" style="background:#caa53a;color:#1a1000">DUO</span>':/희귀/.test(c.cat)?'<span class="rareflag">희귀</span>':c.cat==="루시 드로우 스킬"?'<span class="lucyflag">루시</span>':''}</div>
     <div class="kname2">${esc(c.name)}</div>
     <div class="kbanner ${targetClass(cardTarget(c))}">${esc(cardTarget(c))}</div>
     <div class="krow"><div class="kkws">${kws}</div><div class="kcostcell">코스트 <b>${esc(String(c.cost))}</b></div></div>
     <div class="kbodyzone">${top}${effHTML(c)}</div>
-    <div class="kfoot"><span class="ownerchip" style="color:${c.owner==='공용'?'var(--tx2)':roleVar(charByK(c.owner)?.role)}">${esc(owner)}</span><span class="cnt">${esc(c.cat)}</span></div>
+    <div class="kfoot"><span class="ownerchip" style="color:${c.owner==='공용'?'var(--tx2)':c.owner==='듀오'?'#caa53a':roleVar(charByK(c.owner)?.role)}">${esc(owner)}</span><span class="cnt">${esc(c.cat)}</span></div>
   </div>`;
 }
 /* --- 카드 필터/정렬 공용 --- */
@@ -1179,7 +1205,7 @@ function renderFacets(){
 }
 function renderCardDex(){
   const of=document.getElementById("ownerFilter");
-  if(of.dataset.built!=="1"){of.innerHTML=`<option value="all">소유: 전체</option><option value="공용">공용 풀</option>`+DB.chars.map(c=>`<option value="${c.k}">${esc(c.n)}</option>`).join("");of.dataset.built="1";}
+  if(of.dataset.built!=="1"){of.innerHTML=`<option value="all">소유: 전체</option><option value="듀오">듀오 카드</option><option value="공용">공용 풀</option>`+DB.chars.map(c=>`<option value="${c.k}">${esc(c.n)}</option>`).join("");of.dataset.built="1";}
   renderFacets();
   let list=DB.cards.filter(c=>cardPass(c,null));
   list=sortCardsBy(list,cardSort);
@@ -1373,12 +1399,19 @@ function refreshAll(){
   try{if(typeof renderChars==="function")renderChars();}catch(e){}
   try{if(typeof renderCardDex==="function")renderCardDex();}catch(e){}
 }
-(function(){const a=document.getElementById("impCharCSV"),b=document.getElementById("impCardCSV");
-  const sc=document.getElementById("impSynCSV"),tc=document.getElementById("impTraitCSV");
-  if(a)a.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importCharCSV(rd.result);rd.readAsText(f,"utf-8");e.target.value="";};
-  if(b)b.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importCardCSV(rd.result);rd.readAsText(f,"utf-8");e.target.value="";};
-  if(sc)sc.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importSynergyCSV(rd.result);rd.readAsText(f,"utf-8");e.target.value="";};
-  if(tc)tc.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importTraitsCSV(rd.result);rd.readAsText(f,"utf-8");e.target.value="";};
+function importAutoCSV(text){
+  var rows; try{rows=parseCSV(text);}catch(e){rows=null;}
+  if(!rows||!rows.length){alert("CSV를 읽을 수 없습니다.");return;}
+  var H=rows[0].map(function(s){return String(s||"").trim();});
+  var has=function(n){return H.indexOf(n)>=0;};
+  if(has("카드명")) return importCardCSV(text);
+  if(has("도감번호")||has("핵심메커니즘")||has("특징태그")) return importCharCSV(text);
+  if(has("특성")) return importTraitsCSV(text);
+  if(has("시너지")) return importSynergyCSV(text);
+  alert("인식할 수 없는 CSV 형식입니다.\n캐릭터표·카드표·시너지·특성 CSV 중 하나를 올려주세요.\n(감지된 헤더: "+H.join(", ")+")");
+}
+(function(){var el=document.getElementById("impAutoCSV");
+  if(el)el.onchange=function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){importAutoCSV(rd.result);};rd.readAsText(f,"utf-8");e.target.value="";};
 })();
 
 /* ================= 카드명 인라인 참조 + 툴팁 ================= */
@@ -1720,6 +1753,8 @@ var FIREBASE_CONFIG={apiKey:"AIzaSyCUyehTkADDetADLnWAlcdqKfrpgOXS9Eg",authDomain
     }).catch(function(){});
   } }catch(e){}
   window.showVisitLog=function(){
+    var _pw=prompt("방문 기록을 보려면 비밀번호를 입력하세요.");
+    if(_pw!==(typeof EDIT_PW!=="undefined"?EDIT_PW:"960612")){ if(_pw!=null)alert("비밀번호가 올바르지 않습니다."); return; }
     if(!window.__fdb){alert("Firebase 연결이 없습니다.");return;}
     window.__fdb.collection("visits").orderBy("ts","desc").limit(3000).get().then(function(snap){
       var rows=[]; snap.forEach(function(d){rows.push(d.data());});
