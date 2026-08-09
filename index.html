@@ -899,7 +899,7 @@ function renderDetail(k){
    <div class="sec"><h3>📊 레벨별 능력치</h3><div id="statBox"></div></div>
    <div class="sec"><h3>🏷️ 보유 카드 태그</h3><div class="dtags">${charTagList(ch.k).map(t=>`<span class="dtag" onclick="gotoTag('${esc(t)}')">#${esc(t)}</span>`).join("")||'<span class="cnt">보유 카드 태그 없음</span>'}</div></div>
    <div class="sec"><h3>🎯 핵심 메커니즘</h3><div class="prose">${annotateRefs(ch.mech)}</div></div>
-   <div class="sec"><h3>🤝 시너지 캐릭터</h3><div class="syncards">${(ch.synergy||[]).map(s=>synCard(s)).join("")||'<span class="cnt">등록된 시너지가 없습니다.</span>'}</div></div>
+   <div class="sec"><h3>🤝 듀오 시너지</h3><div class="syncards">${duoSynFor(ch.k).map(s=>synCard(s)).join("")||'<span class="cnt">등록된 듀오 시너지가 없습니다.</span>'}</div></div>
    <div class="sec"><h3>🃏 보유 카드 <span class="cnt" id="cardCnt"></span></h3>
      <div class="toolbar" style="margin:0 0 8px">
        <div class="seg" id="dCardSeg">
@@ -1002,7 +1002,7 @@ function renderDFacets(pool){
 function renderOwnCards(k){
   if(k)activeDetailK=k;else k=activeDetailK;
   const box=document.getElementById("ownCards");if(!box)return;
-  const pool=DB.cards.filter(c=>c.owner===k);
+  const pool=DB.cards.filter(c=>c.owner===k || (c.owner==="듀오" && ((c.duo&&c.duo.indexOf(k)>=0)||(c.eligible&&c.eligible.indexOf(k)>=0))));
   renderDFacets(pool);
   const cards=sortCardsBy(pool.filter(c=>dCardPass(c,null)),curCardSort);
   const cc=document.getElementById("cardCnt");if(cc)cc.textContent=`${cards.length}건`;
@@ -1010,12 +1010,17 @@ function renderOwnCards(k){
 }
 
 /* ================= 시너지 맵 ================= */
-function synBetween(a,b){
-  const ca=charByK(a); let d=(ca.synergy||[]).find(s=>s.k===b);
-  if(d)return d.w;
-  const cb=charByK(b); let d2=(cb.synergy||[]).find(s=>s.k===a);
-  return d2?d2.w:"";
+// 시너지 = 듀오 카드에서 직접 파생 (실제 존재하는 듀오 카드만 표기, 나머지는 공백)
+function duoBetween(a,b){
+  const out=[];
+  DB.cards.forEach(function(c){ if(c.owner!=="듀오")return;
+    if(c.duo&&c.duo.length>=2){ if((c.duo[0]===a&&c.duo[1]===b)||(c.duo[0]===b&&c.duo[1]===a)) out.push("🗡 "+c.name); }
+    else if(c.eligible){ if(c.eligible.indexOf(a)>=0&&c.eligible.indexOf(b)>=0) out.push("🔗 "+c.name); }
+  });
+  return out.join(" · ");
 }
+function synBetween(a,b){ return duoBetween(a,b); }
+function duoSynFor(k){ const out=[]; DB.chars.forEach(function(o){ if(o.k===k)return; const w=duoBetween(k,o.k); if(w)out.push({k:o.k,w:w}); }); return out; }
 function chHeadCell(c,axis){
   const kw=((c.traits&&c.traits.length?c.traits:c.tags)||[]).slice(0,6).map(t=>`<span>${esc(t)}</span>`).join("");
   return `<div class="chh"><div class="chav">${charImg(c)?`<img src="${charImg(c)}">`:`<span>${esc((c.n||'?')[0])}</span>`}</div>
@@ -1024,7 +1029,7 @@ function chHeadCell(c,axis){
 function renderSynMap(){
   const box=document.getElementById("synmap");
   const chars=DB.chars.slice().sort((a,b)=>a.no-b.no);
-  let h=`<div class="synhint">가로·세로축이 조사단원, 각 칸은 두 캐릭터의 <b>키워드가 서로에게 주는 긍정적 시너지</b>입니다. 캐릭터 칸을 누르면 상세로 이동합니다.</div>`;
+  let h=`<div class="synhint">가로·세로축이 조사단원, 각 칸은 두 캐릭터가 함께 쓰는 <b>듀오 카드</b>입니다. (🗡 시그니처 듀오 · 🔗 공용 듀오) 캐릭터 칸을 누르면 상세로 이동합니다.</div>`;
   h+=`<div class="synscroll"><table class="synmatrix"><thead><tr><th class="corner">시너지 매트릭스</th>`;
   chars.forEach(c=>{ h+=`<th class="colh" onclick="openChar('${c.k}')">${chHeadCell(c,'col')}</th>`; });
   h+=`</tr></thead><tbody>`;
