@@ -1017,7 +1017,7 @@ function synBetween(a,b){
   return d2?d2.w:"";
 }
 function chHeadCell(c,axis){
-  const kw=(c.tags||[]).slice(0,4).map(t=>`<span>${esc(t)}</span>`).join("");
+  const kw=((c.traits&&c.traits.length?c.traits:c.tags)||[]).slice(0,6).map(t=>`<span>${esc(t)}</span>`).join("");
   return `<div class="chh"><div class="chav">${charImg(c)?`<img src="${charImg(c)}">`:`<span>${esc((c.n||'?')[0])}</span>`}</div>
     <div class="chnm" style="color:${roleVar(c.role)}">${esc(c.n)}</div></div><div class="chkw">${kw}</div>`;
 }
