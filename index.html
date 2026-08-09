@@ -248,7 +248,7 @@
   .kcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:.12s}
   .kcard:hover{border-color:var(--gem);transform:translateY(-2px);box-shadow:0 6px 18px rgba(74,134,232,.18)}
   .kcard.rare{border:1.5px solid var(--lucy);box-shadow:0 0 0 1px rgba(224,182,77,.3),0 6px 20px rgba(224,182,77,.16)}
-  .kcard.duo{border:1.5px solid var(--gem);box-shadow:0 0 16px rgba(74,134,232,.34)}
+  .kcard.duo{border:2px solid #e8c760;box-shadow:0 0 0 2px rgba(232,199,96,.35),0 0 22px rgba(232,199,96,.5)}
   .kcard.lucy{border:1.5px solid #33c4cf;box-shadow:inset 0 0 0 1px rgba(51,196,207,.3),0 0 12px rgba(51,196,207,.2)}
   .kcard.lucy .kgem{border-color:#33c4cf}
   .lucyflag{position:absolute;top:6px;left:6px;font-size:9.5px;font-weight:800;color:#06282c;background:#33c4cf;padding:2px 6px;border-radius:4px}
@@ -1161,7 +1161,7 @@ function kwBarHTML(kwSet,fn){return KW_OPTIONS.map(k=>`<span class="tagf ${kwSet
 
 /* --- 카드 탭 (패싯 필터 + 개수) --- */
 let cardType="all",ownerF="all",cardSort="def",kQuery="";
-let facTarget=new Set(),facRarity=new Set(),facKw=new Set(),facStatus=new Set(),facBuff=new Set(),facStack=new Set();
+let facTarget=new Set(),facRarity=new Set(),facKw=new Set(),facStatus=new Set(),facBuff=new Set(),facStack=new Set(),facDuo=new Set();
 function cardBuffFlag(c){return cardBuffs(c).length?"있음":"없음";}
 function cardStackFlag(c){return cardBuffs(c).some(b=>b.stack)?"있음":"없음";}
 const STATUS_DEFS=[["출혈",/출혈/],["화상",/화상|태양불꽃|작열 화살|점화|불꽃/],["고통",/고통/],["중독",/중독|맹독|독성/],["서리",/서리|빙결|동결|냉기/],["기절",/기절/],["수면",/수면|잠들/],["약화",/약화/],["방해",/방해/],["도발",/도발(?! 무시)/],["보호막",/보호막|방호막|방벽|배리어|라이프 베리어/],["게이지 보호",/게이지 보호/],["회복/치유",/회복|치유/],["이브",/이브/],["조준",/조준/],["표식",/표식/],["환영검",/환영검/],["스텝",/스텝/],["부활",/부활|불사/],["집중",/집중/],["드로우",/드로우|뽑/]];
@@ -1171,14 +1171,16 @@ document.getElementById("kSearch").oninput=e=>{kQuery=e.target.value.trim();rend
 document.getElementById("ownerFilter").onchange=e=>{ownerF=e.target.value;renderCardDex();};
 document.getElementById("cardSort").onchange=e=>{cardSort=e.target.value;renderCardDex();};
 document.querySelectorAll("#cardViewSeg button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#cardViewSeg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");cardView=b.dataset.v;renderCardDex();if(!document.getElementById("v-detail").classList.contains("hide")&&activeDetailK)renderOwnCards();});
-function clearCardFacets(){facTarget.clear();facRarity.clear();facKw.clear();facStatus.clear();facBuff.clear();facStack.clear();renderCardDex();}
-function toggleFac(which,val){const s={target:facTarget,rarity:facRarity,kw:facKw,status:facStatus,buff:facBuff,stackf:facStack}[which];s.has(val)?s.delete(val):s.add(val);renderCardDex();}
-function facMatch(which,c,val){return which==="target"?cardTarget(c)===val:which==="rarity"?c.cat===val:which==="kw"?cardMatchKw(c,val):which==="buff"?cardBuffFlag(c)===val:which==="stackf"?cardStackFlag(c)===val:cardHasStatus(c,val);}
+function clearCardFacets(){facTarget.clear();facRarity.clear();facKw.clear();facStatus.clear();facBuff.clear();facStack.clear();facDuo.clear();renderCardDex();}
+function toggleFac(which,val){const s={target:facTarget,rarity:facRarity,kw:facKw,status:facStatus,buff:facBuff,stackf:facStack,duo:facDuo}[which];s.has(val)?s.delete(val):s.add(val);renderCardDex();}
+function duoTagMatch(c,val){ if(c.owner!=="듀오")return false; return val==="시그니처"?(c.duo&&c.duo.length>=2):c.tag===val; }
+function facMatch(which,c,val){return which==="target"?cardTarget(c)===val:which==="rarity"?c.cat===val:which==="kw"?cardMatchKw(c,val):which==="duo"?duoTagMatch(c,val):which==="buff"?cardBuffFlag(c)===val:which==="stackf"?cardStackFlag(c)===val:cardHasStatus(c,val);}
 function cardPass(c,skip){
   if(skip!=="type"&&cardType!=="all"&&c.type!==cardType)return false;
   if(skip!=="owner"&&ownerF!=="all"&&c.owner!==ownerF)return false;
   if(skip!=="target"&&facTarget.size&&!facTarget.has(cardTarget(c)))return false;
   if(skip!=="rarity"&&facRarity.size&&!facRarity.has(c.cat))return false;
+  if(skip!=="duo"&&facDuo.size&&![...facDuo].some(v=>duoTagMatch(c,v)))return false;
   if(skip!=="kw"&&facKw.size&&![...facKw].some(k=>cardMatchKw(c,k)))return false;
   if(skip!=="status"&&facStatus.size&&![...facStatus].some(s=>cardHasStatus(c,s)))return false;
   if(skip!=="buff"&&facBuff.size&&!facBuff.has(cardBuffFlag(c)))return false;
@@ -1200,7 +1202,9 @@ const STATUS_GROUPS=[
 ];
 function renderFacets(){
   const rarities=[...new Set(DB.cards.map(c=>c.cat))];
+  const duoTags=[]; DB.cards.forEach(c=>{ if(c.owner!=="듀오")return; if(c.duo&&c.duo.length>=2){ if(duoTags.indexOf("시그니처")<0)duoTags.push("시그니처"); } else if(c.tag&&duoTags.indexOf(c.tag)<0)duoTags.push(c.tag); });
   let h=facetSection("스킬 대상","target",["적 대상","모든 적","다른 아군","모든 아군","자신"],facTarget)
+       +(duoTags.length?facetSection("듀오 태그","duo",duoTags,facDuo):"")
        +facetSection("희귀도·분류","rarity",rarities,facRarity)
        +facetSection("부과 효과","buff",["있음","없음"],facBuff)
        +facetSection("스택","stackf",["있음","없음"],facStack)
