@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>크로노 아크 도감 · 듀오 시너지 모드 포트폴리오</title>
+<title>크로노아크 도감</title>
 <style>
   :root{
     --bg:#141b23;--panel:#1b2530;--panel2:#212e3a;--panel3:#2a3948;--line:#313f4e;
@@ -479,6 +479,8 @@
       <button class="btn sm" onclick="exportCardCSV()">CSV↓ 카드표</button><button class="btn sm" onclick="exportSynergyCSV()">시너지 CSV↓</button><button class="btn sm" onclick="exportTraitsCSV()">특성 CSV↓</button>
       <label class="btn sm" style="cursor:pointer">CSV↑ 캐릭터표<input type="file" id="impCharCSV" accept=".csv" class="hide"></label>
       <label class="btn sm" style="cursor:pointer">CSV↑ 카드표<input type="file" id="impCardCSV" accept=".csv" class="hide"></label>
+      <label class="btn sm" style="cursor:pointer">시너지 CSV↑<input type="file" id="impSynCSV" accept=".csv" class="hide"></label>
+      <label class="btn sm" style="cursor:pointer">특성 CSV↑<input type="file" id="impTraitCSV" accept=".csv" class="hide"></label>
       <button class="btn sm" onclick="exportJSON()">JSON↓</button>
       <label class="btn sm" style="cursor:pointer">JSON↑<input type="file" id="importFile" accept=".json" class="hide"></label>
       <button class="btn sm danger" onclick="resetData()">기본값 복원</button><button class="btn sm" onclick="showVisitLog()">📊 방문 기록</button>
@@ -1343,9 +1345,34 @@ function importCardCSV(text){
   });
   normalizeBuffs();applyEmbeddedImages();save();document.getElementById("ownerFilter").dataset.built="0";renderData();alert("카드 CSV 적용 완료 (신규 "+add+" · 수정 "+upd+")");
 }
+function importSynergyCSV(text){
+  const rows=parseCSV(text);if(rows.length<2){alert("시너지 CSV가 비어 있습니다.");return;}
+  const H=rows[0].map(s=>s.trim());const ci=n=>H.indexOf(n);
+  const ki=ci("키")>=0?ci("키"):0, si=ci("시너지")>=0?ci("시너지"):2;
+  let upd=0,miss=0;
+  rows.slice(1).forEach(r=>{const k=(r[ki]||"").trim();if(!k)return;const c=DB.chars.find(x=>x.k===k);if(!c){miss++;return;}
+    const v=(r[si]||"").trim();
+    c.synergy=v?v.split("|").map(e=>{const p=e.split("=");return{k:(p[0]||"").trim(),w:p.slice(1).join("=").trim()};}).filter(x=>x.k):[];
+    upd++;});
+  save();renderData();alert("시너지 CSV 적용 완료 (갱신 "+upd+(miss?" · 미매칭 "+miss:"")+")");
+}
+function importTraitsCSV(text){
+  const rows=parseCSV(text);if(rows.length<2){alert("특성 CSV가 비어 있습니다.");return;}
+  const H=rows[0].map(s=>s.trim());const ci=n=>H.indexOf(n);
+  const ki=ci("키")>=0?ci("키"):0, ti=ci("특성")>=0?ci("특성"):2;
+  let upd=0,miss=0;
+  rows.slice(1).forEach(r=>{const k=(r[ki]||"").trim();if(!k)return;const c=DB.chars.find(x=>x.k===k);if(!c){miss++;return;}
+    const v=(r[ti]||"").trim();
+    c.traits=v?v.split(",").map(s=>s.trim()).filter(Boolean):[];
+    upd++;});
+  save();renderData();alert("특성 CSV 적용 완료 (갱신 "+upd+(miss?" · 미매칭 "+miss:"")+")");
+}
 (function(){const a=document.getElementById("impCharCSV"),b=document.getElementById("impCardCSV");
+  const sc=document.getElementById("impSynCSV"),tc=document.getElementById("impTraitCSV");
   if(a)a.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importCharCSV(rd.result);rd.readAsText(f,"utf-8");e.target.value="";};
   if(b)b.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importCardCSV(rd.result);rd.readAsText(f,"utf-8");e.target.value="";};
+  if(sc)sc.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importSynergyCSV(rd.result);rd.readAsText(f,"utf-8");e.target.value="";};
+  if(tc)tc.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>importTraitsCSV(rd.result);rd.readAsText(f,"utf-8");e.target.value="";};
 })();
 
 /* ================= 카드명 인라인 참조 + 툴팁 ================= */
